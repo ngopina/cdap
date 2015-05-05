@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.internal.app.namespace;
+package co.cask.cdap.internal.api.namespace;
 
 import co.cask.cdap.common.exception.NamespaceAlreadyExistsException;
 import co.cask.cdap.common.exception.NamespaceCannotBeCreatedException;
