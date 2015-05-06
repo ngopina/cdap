@@ -19,7 +19,7 @@ package co.cask.cdap.data2.util;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.discovery.EndpointStrategy;
 import co.cask.cdap.common.discovery.RandomEndpointStrategy;
-import co.cask.cdap.common.namespace.AbstractNamespaceClient;
+import co.cask.cdap.internal.api.namespace.AbstractNamespaceClient;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpRequests;
 import co.cask.common.http.HttpResponse;

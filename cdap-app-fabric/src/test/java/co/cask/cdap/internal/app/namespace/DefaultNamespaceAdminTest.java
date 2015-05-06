@@ -16,10 +16,7 @@
 
 package co.cask.cdap.internal.app.namespace;
 
-import co.cask.cdap.common.exception.AlreadyExistsException;
 import co.cask.cdap.common.exception.NamespaceAlreadyExistsException;
-import co.cask.cdap.common.exception.NamespaceCannotBeCreatedException;
-import co.cask.cdap.common.exception.NamespaceCannotBeDeletedException;
 import co.cask.cdap.common.exception.NamespaceNotFoundException;
 import co.cask.cdap.common.exception.NotFoundException;
 import co.cask.cdap.internal.api.namespace.NamespaceAdmin;
@@ -29,8 +26,6 @@ import co.cask.cdap.proto.NamespaceMeta;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-
 /**
  * Tests for {@link DefaultNamespaceAdmin}
  */
@@ -38,8 +33,7 @@ public class DefaultNamespaceAdminTest extends AppFabricTestBase {
   private static final NamespaceAdmin namespaceAdmin = getInjector().getInstance(NamespaceAdmin.class);
 
   @Test
-  public void testNamespaces() throws AlreadyExistsException, IOException, NamespaceCannotBeCreatedException,
-    NamespaceCannotBeDeletedException {
+  public void testNamespaces() throws Exception {
     String namespace = "namespace";
     Id.Namespace namespaceId = Id.Namespace.from(namespace);
     NamespaceMeta.Builder builder = new NamespaceMeta.Builder();
@@ -115,7 +109,7 @@ public class DefaultNamespaceAdminTest extends AppFabricTestBase {
     verifyNotFound(namespaceId);
   }
 
-  private static void verifyNotFound(Id.Namespace namespaceId) {
+  private static void verifyNotFound(Id.Namespace namespaceId) throws Exception {
     try {
       namespaceAdmin.getNamespace(namespaceId);
       Assert.fail(String.format("Namespace '%s' should not be found since it was just deleted", namespaceId.getId()));

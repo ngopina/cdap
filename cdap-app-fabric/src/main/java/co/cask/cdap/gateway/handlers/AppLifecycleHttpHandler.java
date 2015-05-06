@@ -232,7 +232,7 @@ public class AppLifecycleHttpHandler extends AbstractAppFabricHttpHandler {
 
   private BodyConsumer deployApplication(final HttpResponder responder,
                                          final String namespaceId, final String appId,
-                                         final String archiveName) throws IOException {
+                                         final String archiveName) throws Exception {
     Id.Namespace namespace = Id.Namespace.from(namespaceId);
     if (!namespaceAdmin.hasNamespace(namespace)) {
       LOG.warn("Namespace '{}' not found.", namespaceId);

@@ -41,12 +41,10 @@ public class NamespaceNameCompleter extends StringsCompleter {
       public Collection<String> get() {
         List<String> namespaceIds = new ArrayList<>();
         try {
-          for (NamespaceMeta namespaceMeta : namespaceClient.list()) {
+          for (NamespaceMeta namespaceMeta : namespaceClient.listNamespaces()) {
             namespaceIds.add(namespaceMeta.getName());
           }
-        } catch (IOException e) {
-          return Lists.newArrayList();
-        } catch (UnauthorizedException e) {
+        } catch (Exception e) {
           return Lists.newArrayList();
         }
         return namespaceIds;

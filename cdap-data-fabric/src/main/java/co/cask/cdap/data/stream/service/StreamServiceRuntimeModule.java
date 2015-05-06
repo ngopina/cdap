@@ -16,12 +16,12 @@
 package co.cask.cdap.data.stream.service;
 
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.namespace.AbstractNamespaceClient;
 import co.cask.cdap.common.runtime.RuntimeModule;
 import co.cask.cdap.data.stream.service.heartbeat.HeartbeatPublisher;
 import co.cask.cdap.data.stream.service.heartbeat.NotificationHeartbeatPublisher;
 import co.cask.cdap.data2.util.DiscoveryNamespaceClient;
 import co.cask.cdap.gateway.handlers.CommonHandlers;
+import co.cask.cdap.internal.api.namespace.AbstractNamespaceClient;
 import co.cask.http.HttpHandler;
 import com.google.common.base.Supplier;
 import com.google.common.util.concurrent.AbstractService;

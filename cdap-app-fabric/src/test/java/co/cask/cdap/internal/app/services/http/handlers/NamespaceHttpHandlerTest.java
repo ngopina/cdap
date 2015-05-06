@@ -24,11 +24,11 @@ import co.cask.cdap.DummyBatchTemplate;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.NotFoundException;
-import co.cask.cdap.common.namespace.AbstractNamespaceClient;
 import co.cask.cdap.common.namespace.NamespacedLocationFactory;
 import co.cask.cdap.data2.dataset2.DatasetFramework;
 import co.cask.cdap.data2.transaction.stream.StreamAdmin;
 import co.cask.cdap.gateway.handlers.NamespaceHttpHandler;
+import co.cask.cdap.internal.api.namespace.AbstractNamespaceClient;
 import co.cask.cdap.internal.app.runtime.adapter.AdapterService;
 import co.cask.cdap.internal.app.services.http.AppFabricTestBase;
 import co.cask.cdap.proto.AdapterConfig;
@@ -378,32 +378,32 @@ public class NamespaceHttpHandlerTest extends AppFabricTestBase {
     // tests the NamespaceClient's ability to interact with Namespace service/handlers.
     AbstractNamespaceClient namespaceClient = getInjector().getInstance(AbstractNamespaceClient.class);
     // test setup creates two namespaces in @BeforeClass, apart from the default namespace which always exists.
-    List<NamespaceMeta> namespaces = namespaceClient.list();
+    List<NamespaceMeta> namespaces = namespaceClient.listNamespaces();
     Assert.assertEquals(3, namespaces.size());
     Set<NamespaceMeta> expectedNamespaces = ImmutableSet.of(Constants.DEFAULT_NAMESPACE_META, TEST_NAMESPACE_META1,
                                                             TEST_NAMESPACE_META2);
     Assert.assertEquals(expectedNamespaces, Sets.newHashSet(namespaces));
 
-    NamespaceMeta namespaceMeta = namespaceClient.get(TEST_NAMESPACE1);
+    NamespaceMeta namespaceMeta = namespaceClient.getNamespace(Id.Namespace.from(TEST_NAMESPACE1));
     Assert.assertEquals(TEST_NAMESPACE_META1, namespaceMeta);
 
     try {
-      namespaceClient.get("nonExistentNamespace");
+      namespaceClient.getNamespace(Id.Namespace.from("nonExistentNamespace"));
       Assert.fail("Did not expect namespace 'nonExistentNamespace' to exist.");
     } catch (NotFoundException expected) {
     }
 
     // test create and get
-    String fooNamespace = "fooNamespace";
+    Id.Namespace fooNamespace = Id.Namespace.from("fooNamespace");
     NamespaceMeta toCreate = new NamespaceMeta.Builder().setName(fooNamespace).build();
-    namespaceClient.create(toCreate);
-    NamespaceMeta receivedMeta = namespaceClient.get(fooNamespace);
+    namespaceClient.createNamespace(toCreate);
+    NamespaceMeta receivedMeta = namespaceClient.getNamespace(fooNamespace);
     Assert.assertNotNull(receivedMeta);
     Assert.assertEquals(toCreate, receivedMeta);
 
-    namespaceClient.delete(fooNamespace);
+    namespaceClient.deleteNamespace(fooNamespace);
     try {
-      namespaceClient.get(fooNamespace);
+      namespaceClient.getNamespace(fooNamespace);
       Assert.fail("Did not expect namespace '" + fooNamespace + "' to exist after deleting it.");
     } catch (NotFoundException expected) {
     }

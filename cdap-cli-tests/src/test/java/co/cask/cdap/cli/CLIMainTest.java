@@ -246,7 +246,7 @@ public class CLIMainTest {
 
     NamespaceClient namespaceClient = new NamespaceClient(cliConfig.getClientConfig());
     Id.Namespace barspace = Id.Namespace.from("bar");
-    namespaceClient.create(new NamespaceMeta.Builder().setName(barspace).build());
+    namespaceClient.createNamespace(new NamespaceMeta.Builder().setName(barspace).build());
     cliConfig.getClientConfig().setNamespace(barspace);
     // list of dataset instances is different in 'foo' namespace
     testCommandOutputNotContains(cli, "list dataset instances", FakeDataset.class.getSimpleName());

@@ -63,11 +63,11 @@ public class DatasetClientTestRun extends ClientTestBase {
     typeClient = new DatasetTypeClient(clientConfig);
     NamespaceClient namespaceClient = new NamespaceClient(clientConfig);
     try {
-      namespaceClient.create(new NamespaceMeta.Builder().setName(TEST_NAMESPACE).build());
+      namespaceClient.createNamespace(new NamespaceMeta.Builder().setName(TEST_NAMESPACE).build());
     } catch (AlreadyExistsException e) {
     }
     try {
-      namespaceClient.create(new NamespaceMeta.Builder().setName(OTHER_NAMESPACE).build());
+      namespaceClient.createNamespace(new NamespaceMeta.Builder().setName(OTHER_NAMESPACE).build());
     } catch (AlreadyExistsException e) {
     }
     clientConfig.setNamespace(TEST_NAMESPACE);
@@ -76,8 +76,8 @@ public class DatasetClientTestRun extends ClientTestBase {
   @After
   public void tearDown() throws Exception {
     NamespaceClient namespaceClient = new NamespaceClient(clientConfig);
-    namespaceClient.delete(TEST_NAMESPACE.getId());
-    namespaceClient.delete(OTHER_NAMESPACE.getId());
+    namespaceClient.deleteNamespace(TEST_NAMESPACE);
+    namespaceClient.deleteNamespace(OTHER_NAMESPACE);
   }
 
   @Test

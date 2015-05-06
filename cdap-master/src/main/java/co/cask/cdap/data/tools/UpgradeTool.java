@@ -340,9 +340,8 @@ public class UpgradeTool {
    * Upgrades adapters by first deleting all the schedule triggers and the the job itself in every namespace follwed by
    * all the adapters in the namespace
    *
-   * @throws SchedulerException
    */
-  private void upgradeAdapters() throws SchedulerException {
+  private void upgradeAdapters() throws Exception {
     DatasetBasedTimeScheduleStore datasetBasedTimeScheduleStore = getDatasetBasedTimeScheduleStore();
     NamespaceAdmin namespaceAdmin = injector.getInstance(NamespaceAdmin.class);
     List<NamespaceMeta> namespaceMetas = namespaceAdmin.listNamespaces();

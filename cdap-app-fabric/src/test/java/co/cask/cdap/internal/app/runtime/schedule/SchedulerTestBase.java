@@ -25,8 +25,6 @@ import co.cask.cdap.app.runtime.ProgramRuntimeService;
 import co.cask.cdap.app.store.Store;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.exception.NamespaceCannotBeDeletedException;
-import co.cask.cdap.common.exception.NotFoundException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.config.PreferencesStore;
 import co.cask.cdap.internal.AppFabricTestHelper;
@@ -148,7 +146,7 @@ public abstract class SchedulerTestBase {
   }
 
   @AfterClass
-  public static void tearDown() throws NotFoundException, NamespaceCannotBeDeletedException {
+  public static void tearDown() throws Exception {
     namespaceAdmin.deleteNamespace(Constants.DEFAULT_NAMESPACE_ID);
   }
 

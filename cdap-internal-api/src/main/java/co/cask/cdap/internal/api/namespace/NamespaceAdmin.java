@@ -36,7 +36,7 @@ public interface NamespaceAdmin {
    *
    * @return a list of {@link NamespaceMeta} for all namespaces
    */
-  List<NamespaceMeta> listNamespaces();
+  List<NamespaceMeta> listNamespaces() throws Exception;
 
   /**
    * Gets details of a namespace
@@ -45,7 +45,7 @@ public interface NamespaceAdmin {
    * @return the {@link NamespaceMeta} of the requested namespace
    * @throws NamespaceNotFoundException if the requested namespace is not found
    */
-  NamespaceMeta getNamespace(Id.Namespace namespaceId) throws NamespaceNotFoundException;
+  NamespaceMeta getNamespace(Id.Namespace namespaceId) throws Exception;
 
   /**
    * Checks if the specified namespace exists
@@ -53,17 +53,16 @@ public interface NamespaceAdmin {
    * @param namespaceId the {@link Id.Namespace} to check for existence
    * @return true, if the specifed namespace exists, false otherwise
    */
-  boolean hasNamespace(Id.Namespace namespaceId);
+  boolean hasNamespace(Id.Namespace namespaceId) throws Exception;
 
   /**
    * Creates a new namespace
    *
    * @param metadata the {@link NamespaceMeta} for the new namespace to be created
    * @throws NamespaceAlreadyExistsException if the specified namespace already exists
-   * @throws co.cask.cdap.common.exception.NamespaceCannotBeCreatedException if the creation operation was unsuccessful
+   * @throws NamespaceCannotBeCreatedException if the creation operation was unsuccessful
    */
-  void createNamespace(NamespaceMeta metadata)
-    throws NamespaceAlreadyExistsException, NamespaceCannotBeCreatedException;
+  void createNamespace(NamespaceMeta metadata) throws Exception;
 
   /**
    * Deletes the specified namespace
@@ -72,8 +71,7 @@ public interface NamespaceAdmin {
    * @throws NamespaceNotFoundException if the specified namespace does not exist
    * @throws NamespaceCannotBeDeletedException if the deletion operation was unsuccessful
    */
-  void deleteNamespace(Id.Namespace namespaceId)
-    throws NamespaceNotFoundException, NamespaceCannotBeDeletedException;
+  void deleteNamespace(Id.Namespace namespaceId) throws Exception;
 
   /**
    * Deletes all datasets in the specified namespace
@@ -82,7 +80,7 @@ public interface NamespaceAdmin {
    * @throws NotFoundException if the specified namespace does not exist
    * @throws NamespaceCannotBeDeletedException if the deletion operation was unsuccessful
    */
-  void deleteDatasets(Id.Namespace namespaceId) throws NotFoundException, NamespaceCannotBeDeletedException;
+  void deleteDatasets(Id.Namespace namespaceId) throws Exception;
 
   /**
    * Update namespace properties for a given namespace.
@@ -91,5 +89,5 @@ public interface NamespaceAdmin {
    * @param namespaceMeta namespacemeta to update
    * @throws NotFoundException if the specified namespace is not found
    */
-  void updateProperties(Id.Namespace namespaceId, NamespaceMeta namespaceMeta) throws NotFoundException;
+  void updateProperties(Id.Namespace namespaceId, NamespaceMeta namespaceMeta) throws Exception;
 }

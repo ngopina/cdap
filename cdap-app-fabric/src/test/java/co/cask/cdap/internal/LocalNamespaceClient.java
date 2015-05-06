@@ -16,12 +16,8 @@
 
 package co.cask.cdap.internal;
 
-import co.cask.cdap.common.exception.NamespaceAlreadyExistsException;
-import co.cask.cdap.common.exception.NamespaceCannotBeCreatedException;
-import co.cask.cdap.common.exception.NamespaceCannotBeDeletedException;
-import co.cask.cdap.common.exception.NamespaceNotFoundException;
 import co.cask.cdap.common.exception.UnauthorizedException;
-import co.cask.cdap.common.namespace.AbstractNamespaceClient;
+import co.cask.cdap.internal.api.namespace.AbstractNamespaceClient;
 import co.cask.cdap.internal.api.namespace.NamespaceAdmin;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
@@ -34,7 +30,7 @@ import java.net.URL;
 import java.util.List;
 
 /**
- * NamespaceClient which directly interacts with a {@link NamespaceAdmin}
+ * Local implementation of {@link AbstractNamespaceClient}
  */
 public class LocalNamespaceClient extends AbstractNamespaceClient {
   private final NamespaceAdmin namespaceAdmin;
@@ -45,24 +41,22 @@ public class LocalNamespaceClient extends AbstractNamespaceClient {
   }
 
   @Override
-  public List<NamespaceMeta> list() throws IOException, UnauthorizedException {
+  public List<NamespaceMeta> listNamespaces() throws Exception {
     return namespaceAdmin.listNamespaces();
   }
 
   @Override
-  public NamespaceMeta get(String namespaceId) throws NamespaceNotFoundException, IOException, UnauthorizedException {
-    return namespaceAdmin.getNamespace(Id.Namespace.from(namespaceId));
+  public NamespaceMeta getNamespace(Id.Namespace namespaceId) throws Exception {
+    return namespaceAdmin.getNamespace(namespaceId);
   }
 
   @Override
-  public void delete(String namespaceId)
-    throws NamespaceNotFoundException, NamespaceCannotBeDeletedException, IOException, UnauthorizedException {
-    namespaceAdmin.deleteNamespace(Id.Namespace.from(namespaceId));
+  public void deleteNamespace(Id.Namespace namespaceId) throws Exception {
+    namespaceAdmin.deleteNamespace(namespaceId);
   }
 
   @Override
-  public void create(NamespaceMeta namespaceMeta)
-    throws NamespaceAlreadyExistsException, NamespaceCannotBeCreatedException {
+  public void createNamespace(NamespaceMeta namespaceMeta) throws Exception {
     namespaceAdmin.createNamespace(namespaceMeta);
   }
 

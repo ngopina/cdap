@@ -48,7 +48,7 @@ public class ListNamespacesCommand extends AbstractCommand {
   public void perform(Arguments arguments, PrintStream output) throws Exception {
     Table table = Table.builder()
       .setHeader("name", "description")
-      .setRows(namespaceClient.list(), new RowMaker<NamespaceMeta>() {
+      .setRows(namespaceClient.listNamespaces(), new RowMaker<NamespaceMeta>() {
         @Override
         public List<?> makeRow(NamespaceMeta object) {
           return Lists.newArrayList(object.getName(), object.getDescription());

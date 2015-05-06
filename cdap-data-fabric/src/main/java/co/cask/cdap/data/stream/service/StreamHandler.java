@@ -25,7 +25,6 @@ import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.BadRequestException;
 import co.cask.cdap.common.exception.NotFoundException;
-import co.cask.cdap.common.namespace.AbstractNamespaceClient;
 import co.cask.cdap.data.format.RecordFormats;
 import co.cask.cdap.data.stream.StreamCoordinatorClient;
 import co.cask.cdap.data.stream.StreamFileWriterFactory;
@@ -34,6 +33,7 @@ import co.cask.cdap.data.stream.service.upload.LengthBasedContentWriterFactory;
 import co.cask.cdap.data.stream.service.upload.StreamBodyConsumerFactory;
 import co.cask.cdap.data2.transaction.stream.StreamAdmin;
 import co.cask.cdap.data2.transaction.stream.StreamConfig;
+import co.cask.cdap.internal.api.namespace.AbstractNamespaceClient;
 import co.cask.cdap.internal.io.SchemaTypeAdapter;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamProperties;
@@ -183,7 +183,6 @@ public final class StreamHandler extends AbstractHttpHandler {
   public void create(HttpRequest request, HttpResponder responder,
                      @PathParam("namespace-id") String namespaceId,
                      @PathParam("stream") String stream) throws Exception {
-
     // Check for namespace existence. Throws NotFoundException if namespace doesn't exist
     namespaceClient.get(namespaceId);
 

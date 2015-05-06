@@ -32,8 +32,6 @@ import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.discovery.EndpointStrategy;
 import co.cask.cdap.common.discovery.RandomEndpointStrategy;
-import co.cask.cdap.common.exception.AlreadyExistsException;
-import co.cask.cdap.common.exception.NamespaceCannotBeCreatedException;
 import co.cask.cdap.common.queue.QueueName;
 import co.cask.cdap.common.stream.StreamEventCodec;
 import co.cask.cdap.data2.queue.QueueClientFactory;
@@ -113,7 +111,7 @@ public class FlowTest {
 
 
   @BeforeClass
-  public static void init() throws AlreadyExistsException, NamespaceCannotBeCreatedException {
+  public static void init() throws Exception {
     NamespaceAdmin namespaceAdmin = AppFabricTestHelper.getInjector().getInstance(NamespaceAdmin.class);
     namespaceAdmin.createNamespace(Constants.DEFAULT_NAMESPACE_META);
     metricStore = AppFabricTestHelper.getInjector().getInstance(MetricStore.class);

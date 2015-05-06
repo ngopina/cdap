@@ -25,8 +25,6 @@ import co.cask.cdap.api.workflow.ScheduleProgramInfo;
 import co.cask.cdap.app.ApplicationSpecification;
 import co.cask.cdap.app.store.Store;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.exception.NamespaceCannotBeDeletedException;
-import co.cask.cdap.common.exception.NotFoundException;
 import co.cask.cdap.internal.AppFabricTestHelper;
 import co.cask.cdap.internal.api.namespace.NamespaceAdmin;
 import co.cask.cdap.internal.app.DefaultApplicationSpecification;
@@ -72,7 +70,7 @@ public class SchedulerServiceTest {
   }
 
   @AfterClass
-  public static void finish() throws NotFoundException, NamespaceCannotBeDeletedException {
+  public static void finish() throws Exception {
     namespaceAdmin.deleteNamespace(namespace);
     namespaceAdmin.deleteDatasets(Constants.DEFAULT_NAMESPACE_ID);
     schedulerService.stopAndWait();

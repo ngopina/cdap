@@ -181,12 +181,12 @@ public class IntegrationTestManager implements TestManager {
 
   @Override
   public void createNamespace(NamespaceMeta namespaceMeta) throws Exception {
-    namespaceClient.create(namespaceMeta);
+    namespaceClient.createNamespace(namespaceMeta);
   }
 
   @Override
   public void deleteNamespace(Id.Namespace namespace) throws Exception {
-    namespaceClient.delete(namespace.getId());
+    namespaceClient.deleteNamespace(namespace);
   }
 
   @Override

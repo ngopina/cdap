@@ -48,7 +48,7 @@ public class CreateNamespaceCommand extends AbstractCommand {
     String description = arguments.get(ArgumentName.NAMESPACE_DESCRIPTION.toString(), "");
     NamespaceMeta.Builder builder = new NamespaceMeta.Builder();
     builder.setName(name).setDescription(description);
-    namespaceClient.create(builder.build());
+    namespaceClient.createNamespace(builder.build());
 
     output.println(String.format(SUCCESS_MSG, name));
   }
