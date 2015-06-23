@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2014 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,23 +14,23 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
+package co.cask.cdap.common;
 
 import co.cask.cdap.proto.Id;
 
 /**
- * Thrown when a namespace already exists.
+ * Thrown when the user tries to create a dataset, but a dataset already exists by that name.
  */
-public class NamespaceAlreadyExistsException extends AlreadyExistsException {
+public class DatasetAlreadyExistsException extends AlreadyExistsException {
 
-  private final Id.Namespace id;
+  private final Id.DatasetInstance id;
 
-  public NamespaceAlreadyExistsException(Id.Namespace id) {
+  public DatasetAlreadyExistsException(Id.DatasetInstance id) {
     super(id);
     this.id = id;
   }
 
-  public Id.Namespace getId() {
+  public Id.DatasetInstance getId() {
     return id;
   }
 }

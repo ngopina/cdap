@@ -14,23 +14,24 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
+package co.cask.cdap.common;
 
 import co.cask.cdap.proto.Id;
 
 /**
- * Thrown when a dataset was not found.
+ * Thrown when an element already exists.
  */
-public class DatasetNotFoundException extends NotFoundException {
+public class AlreadyExistsException extends Exception {
 
-  private final Id.DatasetInstance dataset;
+  private final Id objectId;
 
-  public DatasetNotFoundException(Id.DatasetInstance dataset) {
-    super(dataset);
-    this.dataset = dataset;
+  public AlreadyExistsException(Id id) {
+    super(String.format("'%s' already exists", id.getIdRep()));
+    this.objectId = id;
   }
 
-  public Id.DatasetInstance getId() {
-    return dataset;
+  public Id getObjectId() {
+    return objectId;
   }
+
 }

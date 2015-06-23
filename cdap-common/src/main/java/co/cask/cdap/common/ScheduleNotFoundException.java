@@ -1,5 +1,5 @@
 /*
- * Copyright © 2014 Cask Data, Inc.
+ * Copyright © 2015 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,23 +14,16 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
+package co.cask.cdap.common;
 
 import co.cask.cdap.proto.Id;
 
 /**
- * Thrown when a dataset type is not found
+ * Thrown when a schedule is not found.
  */
-public class DatasetTypeNotFoundException extends NotFoundException {
+public class ScheduleNotFoundException extends NotFoundException {
 
-  private final Id.DatasetType id;
-
-  public DatasetTypeNotFoundException(Id.DatasetType id) {
-    super(id);
-    this.id = id;
-  }
-
-  public Id.DatasetType getId() {
-    return id;
+  public ScheduleNotFoundException(Id.Schedule schedule) {
+    super(schedule);
   }
 }

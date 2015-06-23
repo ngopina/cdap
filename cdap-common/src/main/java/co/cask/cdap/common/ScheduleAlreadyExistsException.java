@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2014 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,22 +14,23 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
+package co.cask.cdap.common;
+
+import co.cask.cdap.proto.Id;
 
 /**
- * Thrown when there was a conflict.
+ * Thrown when the user tries to create a schedule that already exists.
  */
-public class ConflictException extends Exception {
+public class ScheduleAlreadyExistsException extends AlreadyExistsException {
 
-  public ConflictException() {
-    super();
+  private final Id.Schedule schedule;
+
+  public ScheduleAlreadyExistsException(Id.Schedule schedule) {
+    super(schedule);
+    this.schedule = schedule;
   }
 
-  public ConflictException(String message) {
-    super(message);
-  }
-
-  public ConflictException(String message, Throwable cause) {
-    super(message, cause);
+  public Id.Schedule getSchedule() {
+    return schedule;
   }
 }

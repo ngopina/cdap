@@ -14,24 +14,23 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
+package co.cask.cdap.common;
 
 import co.cask.cdap.proto.Id;
 
 /**
- * Thrown when a query was not found by its handle.
+ * Thrown when a stream is not found
  */
-public class QueryNotFoundException extends NotFoundException {
+public class StreamNotFoundException extends NotFoundException {
 
-  private final Id.QueryHandle id;
+  private final Id.Stream id;
 
-  // TODO: namespace?
-  public QueryNotFoundException(Id.QueryHandle id) {
+  public StreamNotFoundException(Id.Stream id) {
     super(id);
     this.id = id;
   }
 
-  public Id.QueryHandle getId() {
+  public Id.Stream getId() {
     return id;
   }
 }

@@ -14,28 +14,23 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
+package co.cask.cdap.common;
 
 import co.cask.cdap.proto.Id;
 
 /**
- * Thrown when a namespace cannot be created due to errors.
+ * Thrown when a namespace is not found in CDAP.
  */
-public class NamespaceCannotBeCreatedException extends CannotBeCreatedException {
+public class NamespaceNotFoundException extends NotFoundException {
 
-  private final Id.Namespace namespaceId;
+  private final Id.Namespace namespace;
 
-  public NamespaceCannotBeCreatedException(Id.Namespace namespaceId, String reason) {
-    super(namespaceId, reason);
-    this.namespaceId = namespaceId;
+  public NamespaceNotFoundException(Id.Namespace id) {
+    super(id);
+    this.namespace = id;
   }
 
-  public NamespaceCannotBeCreatedException(Id.Namespace namespaceId, Throwable cause) {
-    super(namespaceId, cause);
-    this.namespaceId = namespaceId;
-  }
-
-  public Id.Namespace getNamespaceId() {
-    return namespaceId;
+  public Id.Namespace getId() {
+    return namespace;
   }
 }

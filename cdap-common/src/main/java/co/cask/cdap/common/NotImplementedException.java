@@ -14,24 +14,10 @@
  * the License.
  */
 
-package co.cask.cdap.common.exception;
-
-import co.cask.cdap.proto.Id;
+package co.cask.cdap.common;
 
 /**
- * Thrown when an element already exists.
+ * Thrown when some operation is not implemented.
  */
-public class AlreadyExistsException extends Exception {
-
-  private final Id objectId;
-
-  public AlreadyExistsException(Id id) {
-    super(String.format("'%s' already exists", id.getIdRep()));
-    this.objectId = id;
-  }
-
-  public Id getObjectId() {
-    return objectId;
-  }
-
+public class NotImplementedException extends Exception {
 }
