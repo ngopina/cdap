@@ -26,9 +26,9 @@ public interface RunnableContext extends RuntimeContext, ServiceDiscoverer, Stre
 
   /**
    * Execute a set of operations on datasets via a {@link TxRunnable} that are committed as a single transaction.
-   * @param runnable the runnable to be executed in the transaction
+   * @param txRunnable the runnable to be executed in the transaction
    */
-  void execute(TxRunnable runnable);
+  void execute(TxRunnable txRunnable);
 
   /**
    * @return the instance id

@@ -70,7 +70,9 @@ import javax.annotation.ParametersAreNonnullByDefault;
  *
  * @param <T> specification of {@link RunnableContext}
  */
-public abstract class BasicRunnableContext<T extends DatasetProvider> extends AbstractContext implements RunnableContext {
+public abstract class BasicRunnableContext<T extends DatasetProvider> extends AbstractContext
+  implements RunnableContext {
+
   private static final Logger LOG = LoggerFactory.getLogger(BasicRunnableContext.class);
 
   private final TransactionSystemClient transactionSystemClient;
@@ -174,11 +176,11 @@ public abstract class BasicRunnableContext<T extends DatasetProvider> extends Ab
   }
 
   @Override
-  public void execute(TxRunnable runnable) {
+  public void execute(TxRunnable txRunnable) {
     final TransactionContext context = new TransactionContext(transactionSystemClient);
     try {
       context.start();
-      runnable.run(new DynamicDatasetContext(Id.Namespace.from(program.getNamespaceId()),
+      txRunnable.run(new DynamicDatasetContext(Id.Namespace.from(program.getNamespaceId()),
                                              context, datasetFramework,
                                              getProgram().getClassLoader(), runtimeArgs, null, getOwners()) {
         @Override

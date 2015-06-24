@@ -97,7 +97,7 @@ final class WorkflowDriver extends AbstractExecutionThreadService {
   private boolean suspended;
   private Lock lock;
   private Condition condition;
-  private final BasicWorkflowActionContext context;
+  private final BasicWorkflowActionContext workflowActionContext;
 
   WorkflowDriver(Program program, ProgramOptions options, InetAddress hostname,
                  WorkflowSpecification workflowSpec, ProgramRunnerFactory programRunnerFactory,
@@ -122,7 +122,7 @@ final class WorkflowDriver extends AbstractExecutionThreadService {
     this.loggingContext = new WorkflowLoggingContext(program.getNamespaceId(), program.getApplicationId(),
                                                      program.getName(),
                                                      arguments.getOption(ProgramOptionConstants.RUN_ID), adapterName);
-    this.context = context;
+    this.workflowActionContext = context;
   }
 
   @Override
@@ -401,7 +401,7 @@ final class WorkflowDriver extends AbstractExecutionThreadService {
                                                  logicalStartTime,
                                                  workflowProgramRunnerFactory.getProgramWorkflowRunner(actionSpec,
                                                                                                        token, nodeId),
-                                                 runtimeArgs, token, context));
+                                                 runtimeArgs, token, workflowActionContext));
     } catch (Throwable t) {
       LOG.warn("Exception on WorkflowAction.initialize(), abort Workflow. {}", actionSpec, t);
       // this will always rethrow

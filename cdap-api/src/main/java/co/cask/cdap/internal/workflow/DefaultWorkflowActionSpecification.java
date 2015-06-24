@@ -22,6 +22,7 @@ import co.cask.cdap.internal.specification.PropertyFieldExtractor;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.reflect.TypeToken;
 
 import java.util.HashSet;
@@ -39,7 +40,6 @@ public class DefaultWorkflowActionSpecification implements WorkflowActionSpecifi
   private final Map<String, String> properties;
   private final Set<String> datasets;
 
-
   public DefaultWorkflowActionSpecification(String name, String description, Map<String, String> properties) {
     this(null, name, description, properties);
   }
@@ -55,7 +55,7 @@ public class DefaultWorkflowActionSpecification implements WorkflowActionSpecifi
     this.name = spec.getName();
     this.description = spec.getDescription();
     this.properties = ImmutableMap.copyOf(properties);
-    this.datasets = new HashSet<>();
+    this.datasets = Sets.newHashSet();
   }
 
   public DefaultWorkflowActionSpecification(String className, String name, String description,
@@ -64,7 +64,7 @@ public class DefaultWorkflowActionSpecification implements WorkflowActionSpecifi
     this.name = name;
     this.description = description;
     this.properties = ImmutableMap.copyOf(properties);
-    this.datasets = new HashSet<>();
+    this.datasets = Sets.newHashSet();
   }
 
   @Override
@@ -92,13 +92,13 @@ public class DefaultWorkflowActionSpecification implements WorkflowActionSpecifi
     return properties.get(key);
   }
 
-
   @Override
   public String toString() {
     return Objects.toStringHelper(WorkflowActionSpecification.class)
       .add("name", name)
       .add("class", className)
       .add("options", properties)
+      .add("datasets", datasets)
       .toString();
   }
 

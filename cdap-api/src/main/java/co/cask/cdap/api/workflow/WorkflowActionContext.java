@@ -27,5 +27,4 @@ public interface WorkflowActionContext extends RunnableContext {
    * Returns the specification used to configure {@link WorkflowAction} bounded to this context.
    */
   WorkflowActionSpecification getSpecification();
-
 }

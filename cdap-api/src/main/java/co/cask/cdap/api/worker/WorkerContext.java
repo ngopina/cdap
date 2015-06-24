@@ -32,5 +32,4 @@ public interface WorkerContext extends RunnableContext {
    * @return number of instances of this worker
    */
   int getInstanceCount();
-
 }

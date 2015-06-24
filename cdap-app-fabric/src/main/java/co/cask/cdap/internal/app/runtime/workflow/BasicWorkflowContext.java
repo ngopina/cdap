@@ -36,7 +36,7 @@ final class BasicWorkflowContext implements WorkflowContext {
   private final ProgramWorkflowRunner programWorkflowRunner;
   private final Map<String, String> runtimeArgs;
   private final WorkflowToken token;
-  private final WorkflowActionContext context;
+  private final WorkflowActionContext workflowActionContext;
 
   BasicWorkflowContext(WorkflowSpecification workflowSpec, @Nullable WorkflowActionSpecification specification,
                        long logicalStartTime, @Nullable ProgramWorkflowRunner programWorkflowRunner,
@@ -47,14 +47,15 @@ final class BasicWorkflowContext implements WorkflowContext {
 
   BasicWorkflowContext(WorkflowSpecification workflowSpec, @Nullable WorkflowActionSpecification specification,
                        long logicalStartTime, @Nullable ProgramWorkflowRunner programWorkflowRunner,
-                       Map<String, String> runtimeArgs, WorkflowToken token, WorkflowActionContext context) {
+                       Map<String, String> runtimeArgs, WorkflowToken token,
+                       WorkflowActionContext workflowActionContext) {
     this.workflowSpec = workflowSpec;
     this.specification = specification;
     this.logicalStartTime = logicalStartTime;
     this.programWorkflowRunner = programWorkflowRunner;
     this.runtimeArgs = ImmutableMap.copyOf(runtimeArgs);
     this.token = token;
-    this.context = context;
+    this.workflowActionContext = workflowActionContext;
   }
 
   @Override
@@ -96,6 +97,6 @@ final class BasicWorkflowContext implements WorkflowContext {
   @Nullable
   @Override
   public WorkflowActionContext getWorkflowActionContext() {
-    return context;
+    return workflowActionContext;
   }
 }
