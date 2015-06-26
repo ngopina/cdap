@@ -210,12 +210,6 @@ public class ExploreRuntimeModule extends RuntimeModule {
         System.setProperty(HiveConf.ConfVars.HIVE_SERVER2_ENABLE_DOAS.toString(), "false");
         System.setProperty(HiveConf.ConfVars.METASTORE_USE_THRIFT_SASL.toString(), "false");
 
-        // In a unit-test context, if two test classes both extending TestBase have record scannable datasets,
-        // the initialization of the metastore for the second test class will not have the default
-        // databases created because the static boolean to check whether default should be created will
-        // be deactivated by the first init.
-//        HiveMetaStore.HMSHandler.resetDefaultDBFlag();
-
         return exploreService;
       }
     }
