@@ -16,10 +16,11 @@
 
 package co.cask.cdap.internal.app.runtime.spark;
 
+import co.cask.cdap.internal.app.runtime.spark.dataset.SparkDatasetOutputFormat;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.OutputFormat;
+import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -37,20 +38,25 @@ public class JavaSparkFrameworkContext implements SparkFrameworkContext {
 
   @SuppressWarnings("unchecked")
   @Override
-  public <R, K, V> R newAPIHadoopFile(String name, Class<? extends InputFormat> inputFormatClass,
-                                      Class<K> keyClass, Class<V> valueClass, Configuration hConf) {
-    return (R) sparkContext.newAPIHadoopFile(name, inputFormatClass, keyClass, valueClass, hConf);
+  public <R, K, V> R createRDD(Class<? extends InputFormat> inputFormatClass,
+                               Class<K> keyClass, Class<V> valueClass, Configuration hConf) {
+    Configuration configuration = new Configuration(hConf);
+    configuration.set(MRJobConfig.INPUT_FORMAT_CLASS_ATTR, inputFormatClass.getName());
+    return (R) sparkContext.newAPIHadoopRDD(configuration, inputFormatClass, keyClass, valueClass);
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public <R, K, V> void saveAsNewAPIHadoopFile(R rdd, String name,
-                                               Class<? extends OutputFormat> outputFormatClass,
-                                               Class<K> keyClass, Class<V> valueClass, Configuration hConf) {
+  public <R, K, V> void saveAsDataset(R rdd, String datasetName,
+                                      Class<K> keyClass, Class<V> valueClass, Configuration hConf) {
     Preconditions.checkArgument(rdd instanceof JavaPairRDD,
                                 "RDD class %s is not a subclass of %s",
                                 rdd.getClass().getName(), JavaPairRDD.class.getName());
-    ((JavaPairRDD<K, V>) rdd).saveAsNewAPIHadoopFile(name, keyClass, valueClass, outputFormatClass, hConf);
+
+    Configuration configuration = new Configuration(hConf);
+    SparkDatasetOutputFormat.setDataset(configuration, datasetName);
+    configuration.set(MRJobConfig.OUTPUT_FORMAT_CLASS_ATTR, SparkDatasetOutputFormat.class.getName());
+    ((JavaPairRDD<K, V>) rdd).saveAsNewAPIHadoopDataset(configuration);
   }
 
   @SuppressWarnings("unchecked")

@@ -25,11 +25,11 @@ import org.apache.hadoop.mapreduce.OutputFormat;
  */
 public interface SparkFrameworkContext {
 
-  <R, K, V> R newAPIHadoopFile(String name, Class<? extends InputFormat> inputFormatClass,
-                             Class<K> keyClass, Class<V> valueClass, Configuration hConf);
+  <R, K, V> R createRDD(Class<? extends InputFormat> inputFormatClass,
+                        Class<K> keyClass, Class<V> valueClass, Configuration hConf);
 
-  <R, K, V> void saveAsNewAPIHadoopFile(R rdd, String name, Class<? extends OutputFormat<K, V>> outputFormatClass,
-                                        Class<K> keyClass, Class<V> valueClass, Configuration hConf);
+  <R, K, V> void saveAsDataset(R rdd, String datasetName,
+                               Class<K> keyClass, Class<V> valueClass, Configuration hConf);
 
   <T> T getContext();
 }
