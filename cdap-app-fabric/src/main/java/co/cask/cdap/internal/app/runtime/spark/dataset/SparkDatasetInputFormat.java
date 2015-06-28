@@ -16,6 +16,7 @@
 
 package co.cask.cdap.internal.app.runtime.spark.dataset;
 
+import co.cask.cdap.api.data.DatasetInstantiationException;
 import co.cask.cdap.api.data.batch.BatchReadable;
 import co.cask.cdap.api.data.batch.Split;
 import co.cask.cdap.api.data.batch.SplitReader;
@@ -23,8 +24,9 @@ import co.cask.cdap.api.dataset.Dataset;
 import co.cask.cdap.api.spark.Spark;
 import co.cask.cdap.internal.app.runtime.batch.dataset.DataSetInputSplit;
 import co.cask.cdap.internal.app.runtime.spark.BasicSparkContext;
-import co.cask.cdap.internal.app.runtime.spark.SparkContextConfig;
-import co.cask.cdap.internal.app.runtime.spark.SparkContextProvider;
+import co.cask.cdap.internal.app.runtime.spark.SparkClassLoader;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
@@ -46,14 +48,24 @@ import java.util.List;
  *                TODO: Refactor this and MapReduce DatasetInputFormat
  */
 public final class SparkDatasetInputFormat<KEY, VALUE> extends InputFormat<KEY, VALUE> {
+
   private static final Logger LOG = LoggerFactory.getLogger(SparkDatasetInputFormat.class);
-  public static final String HCONF_ATTR_INPUT_DATASET = "input.dataset.name";
+
+  // Set of job configuration keys for setting configurations into job conf.
+  private static final String INPUT_DATASET_NAME = "input.spark.dataset.name";
+
+  public static void setDataset(Configuration configuration, String dataset) {
+    configuration.set(INPUT_DATASET_NAME, dataset);
+  }
 
   @Override
   public List<InputSplit> getSplits(final JobContext context) throws IOException, InterruptedException {
-    SparkContextConfig sparkContextConfig = new SparkContextConfig(context.getConfiguration());
-    List<Split> splits = sparkContextConfig.getInputSelection();
-    List<InputSplit> list = new ArrayList<>();
+    SparkClassLoader sparkClassLoader = SparkClassLoader.findFromContext();
+
+    BatchReadable<?, ?> batchReadable = getBatchReadable(context.getConfiguration().get(INPUT_DATASET_NAME),
+                                                         sparkClassLoader.getContext());
+    List<Split> splits = batchReadable.getSplits();
+    List<InputSplit> list = new ArrayList<>(splits.size());
     for (Split split : splits) {
       list.add(new DataSetInputSplit(split));
     }
@@ -62,25 +74,77 @@ public final class SparkDatasetInputFormat<KEY, VALUE> extends InputFormat<KEY, 
 
   @SuppressWarnings("unchecked")
   @Override
-  public RecordReader<KEY, VALUE> createRecordReader(final InputSplit split,
-                                                     final TaskAttemptContext context)
-    throws IOException, InterruptedException {
-
+  public RecordReader<KEY, VALUE> createRecordReader(InputSplit split,
+                                                     TaskAttemptContext context) throws IOException {
+    SparkClassLoader sparkClassLoader = SparkClassLoader.findFromContext();
     DataSetInputSplit inputSplit = (DataSetInputSplit) split;
 
-    Configuration conf = context.getConfiguration();
-    SparkContextProvider contextProvider = new SparkContextProvider(context.getConfiguration());
-    BasicSparkContext sparkContext = contextProvider.get();
-    //TODO: Metrics should be started here when implemented
-    String dataSetName = getInputName(conf);
-    BatchReadable<KEY, VALUE> inputDataset = (BatchReadable<KEY, VALUE>) sparkContext.getDataset(dataSetName);
-    SplitReader<KEY, VALUE> splitReader = inputDataset.createSplitReader(inputSplit.getSplit());
+    final BasicSparkContext sparkContext = sparkClassLoader.getContext();
+    final BatchReadable<KEY, VALUE> batchReadable = getBatchReadable(context.getConfiguration().get(INPUT_DATASET_NAME),
+                                                                     sparkContext);
+    final SplitReader<KEY, VALUE> splitReader = batchReadable.createSplitReader(inputSplit.getSplit());
 
-    // the record reader now owns the context and will close it
-    return new DatasetRecordReader<>(splitReader, sparkContext, dataSetName);
+    return new DatasetRecordReader<>(new SplitReader<KEY, VALUE>() {
+      @Override
+      public void initialize(Split split) throws InterruptedException {
+        splitReader.initialize(split);
+      }
+
+      @Override
+      public boolean nextKeyValue() throws InterruptedException {
+        return splitReader.nextKeyValue();
+      }
+
+      @Override
+      public KEY getCurrentKey() throws InterruptedException {
+        return splitReader.getCurrentKey();
+      }
+
+      @Override
+      public VALUE getCurrentValue() throws InterruptedException {
+        return splitReader.getCurrentValue();
+      }
+
+      @Override
+      public void close() {
+        try {
+          splitReader.close();
+        } finally {
+          commitAndClose();
+        }
+      }
+
+      private void commitAndClose() {
+        if (batchReadable instanceof Dataset) {
+          try {
+            sparkContext.commitAndClose((Dataset) batchReadable);
+          } catch (Exception e) {
+            // Nothing much can be done except propagating, which should make the spark job fail.
+            // Log the exception as well since whether the Spark framework log it or not is out of our control.
+            LOG.error("Failed to commit dataset %s", batchReadable, e);
+            throw Throwables.propagate(e);
+          }
+        }
+      }
+    });
   }
 
-  private String getInputName(Configuration conf) {
-    return conf.get(HCONF_ATTR_INPUT_DATASET);
+  /**
+   * Returns a {@link BatchReadable} that is implemented by the given dataset.
+   *
+   * @param datasetName name of the dataset
+   * @param sparkContext the {@link BasicSparkContext} for getting dataset
+   * @param <K> key type for the BatchReadable
+   * @param <V> value type for the BatchReadable
+   * @return the BatchReadable
+   * @throws DatasetInstantiationException if cannot find the dataset
+   * @throws IllegalArgumentException if the dataset does not implement BatchReadable
+   */
+  @SuppressWarnings("unchecked")
+  private <K, V> BatchReadable<K, V> getBatchReadable(String datasetName, BasicSparkContext sparkContext) {
+    Dataset dataset = sparkContext.getDataset(datasetName);
+    Preconditions.checkArgument(dataset instanceof BatchReadable, "Dataset %s of type %s does not implements %s",
+                                datasetName, dataset.getClass().getName(), BatchReadable.class.getName());
+    return (BatchReadable<K, V>) dataset;
   }
 }

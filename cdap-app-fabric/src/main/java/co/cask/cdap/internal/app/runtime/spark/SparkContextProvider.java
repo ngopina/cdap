@@ -52,7 +52,7 @@ public class SparkContextProvider {
                contextConfig.getArguments(),
                contextConfig.getTx(),
                hConf.getClassLoader(),
-               contextConfig.getProgramLocation()
+               contextConfig.getProgramJarURI()
         );
     }
     return context;

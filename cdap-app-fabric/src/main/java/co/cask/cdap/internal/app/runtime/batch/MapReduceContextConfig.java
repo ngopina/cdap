@@ -118,6 +118,7 @@ public final class MapReduceContextConfig {
     }
   }
 
+  @Nullable
   public String getWorkflowBatch() {
     return hConf.get(HCONF_ATTR_WORKFLOW_BATCH);
   }

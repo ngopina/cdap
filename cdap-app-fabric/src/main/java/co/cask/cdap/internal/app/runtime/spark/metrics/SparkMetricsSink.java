@@ -21,17 +21,15 @@ import co.cask.cdap.api.metrics.MetricsContext;
 import co.cask.cdap.api.spark.Spark;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
-import com.google.common.io.Closeables;
+import com.google.common.base.Charsets;
+import com.google.common.io.Files;
 import org.apache.spark.SparkConf;
 import org.apache.spark.metrics.MetricsSystem;
 import org.apache.spark.metrics.sink.Sink;
 import org.apache.twill.filesystem.Location;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -44,15 +42,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class SparkMetricsSink implements Sink {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SparkMetricsSink.class);
-
-  public static final int CONSOLE_DEFAULT_PERIOD = 1;
-  public static final String CONSOLE_DEFAULT_UNIT = TimeUnit.SECONDS.name();
+  private static final int CONSOLE_DEFAULT_PERIOD = 1;
+  private static final String CONSOLE_DEFAULT_UNIT = TimeUnit.SECONDS.name();
 
   private static final String CONSOLE_KEY_PERIOD = "period";
   private static final String CONSOLE_KEY_UNIT = "unit";
-
-  public static final String SPARK_METRICS_PROPERTIES_FILENAME = "metrics.properties";
 
   private static final String SPARK_METRICS_SINK_NAME = "*.sink.console.class=";
   private static final String SPARK_METRICS_SINK_PERIOD = "*.sink.console.period=";
@@ -100,43 +94,28 @@ public class SparkMetricsSink implements Sink {
   }
 
   /**
-   * Writes the metrics properties needed by spark
-   *
-   * @param writer {@link BufferedWriter} to which the properties will be written
-   * @throws IOException : if failed to write
-   */
-  private static void writeSparkMetricsProperties(BufferedWriter writer) throws IOException {
-    writer.write(SPARK_METRICS_SINK_NAME);
-    writer.write(SparkMetricsSink.class.getName());
-    writer.newLine();
-    writer.write(SPARK_METRICS_SINK_PERIOD);
-    writer.write(String.valueOf(SparkMetricsSink.CONSOLE_DEFAULT_PERIOD));
-    writer.newLine();
-    writer.write(SPARK_METRICS_SINK_UNIT);
-    writer.write(SparkMetricsSink.CONSOLE_DEFAULT_UNIT);
-    writer.newLine();
-    writer.write(SPARK_METRICS_MASTER_PERIOD);
-    writer.write(String.valueOf(SparkMetricsSink.CONSOLE_DEFAULT_PERIOD));
-    writer.newLine();
-    writer.write(SPARK_METRICS_MASTER_UNIT);
-    writer.write(SparkMetricsSink.CONSOLE_DEFAULT_UNIT);
-  }
-
-  /**
    * Generate a properties file which is used to config Spark Metrics in {@link SparkConf}
    *
-   * @param sparkMetricsPropertiesFile the {@link Location} where this file should be generated
+   * @param file the {@link File} where this file should be generated
+   * @return the same File argument provided.
    */
-  public static void generateSparkMetricsConfig(File sparkMetricsPropertiesFile) throws IOException {
-    try {
-      BufferedWriter writer = new BufferedWriter(new FileWriter(sparkMetricsPropertiesFile));
-      try {
-        writeSparkMetricsProperties(writer);
-      } finally {
-        Closeables.close(writer, false);
-      }
-    } catch (IOException ioe) {
-      throw ioe;
+  public static File generateSparkMetricsConfig(File file) throws IOException {
+    try (BufferedWriter writer = Files.newWriter(file, Charsets.UTF_8)) {
+      writer.write(SPARK_METRICS_SINK_NAME);
+      writer.write(SparkMetricsSink.class.getName());
+      writer.newLine();
+      writer.write(SPARK_METRICS_SINK_PERIOD);
+      writer.write(String.valueOf(SparkMetricsSink.CONSOLE_DEFAULT_PERIOD));
+      writer.newLine();
+      writer.write(SPARK_METRICS_SINK_UNIT);
+      writer.write(SparkMetricsSink.CONSOLE_DEFAULT_UNIT);
+      writer.newLine();
+      writer.write(SPARK_METRICS_MASTER_PERIOD);
+      writer.write(String.valueOf(SparkMetricsSink.CONSOLE_DEFAULT_PERIOD));
+      writer.newLine();
+      writer.write(SPARK_METRICS_MASTER_UNIT);
+      writer.write(SparkMetricsSink.CONSOLE_DEFAULT_UNIT);
+      return file;
     }
   }
 }

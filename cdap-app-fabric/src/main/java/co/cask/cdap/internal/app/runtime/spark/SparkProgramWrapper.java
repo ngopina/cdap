@@ -18,10 +18,11 @@ package co.cask.cdap.internal.app.runtime.spark;
 
 import co.cask.cdap.api.spark.JavaSparkProgram;
 import co.cask.cdap.api.spark.ScalaSparkProgram;
-import co.cask.cdap.api.spark.Spark;
 import co.cask.cdap.api.spark.SparkContext;
 import co.cask.cdap.api.spark.SparkProgram;
-import com.google.common.base.Throwables;
+import com.google.common.base.Preconditions;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,16 +52,15 @@ public class SparkProgramWrapper {
 
   private static final Logger LOG = LoggerFactory.getLogger(SparkProgramWrapper.class);
   private static final int PROGRAM_WRAPPER_ARGUMENTS_SIZE = 1;
-  private final String[] arguments;
-  private final Class<? extends SparkProgram> userProgramClass;
-  private static BasicSparkContext basicSparkContext;
-  private static SparkContext sparkContext;
-  private static boolean scalaProgram;
 
-  // TODO: Get around Spark's limitation of only one SparkContext in a JVM and support multiple spark context:
-  // CDAP-4
-  private static boolean sparkProgramSuccessful;
-  private static boolean sparkProgramRunning;
+//  // TODO: Get around Spark's limitation of only one SparkContext in a JVM and support multiple spark context:
+//  // CDAP-4
+//  private static boolean sparkProgramSuccessful;
+//  private static boolean sparkProgramRunning;
+
+  public static void main(String[] args) throws Exception {
+    new SparkProgramWrapper(args);
+  }
 
   /**
    * Constructor
@@ -69,19 +69,13 @@ public class SparkProgramWrapper {
    * @throws RuntimeException if the user's program class is not found
    */
   @SuppressWarnings("unchecked")
-  private SparkProgramWrapper(String[] args) {
-    arguments = validateArgs(args);
-    try {
-      // Load the user class from the ProgramClassLoader
-      userProgramClass = loadUserSparkClass(arguments[0]);
-    } catch (ClassNotFoundException e) {
-      LOG.error("Unable to load program class: {}", arguments[0], e);
-      throw Throwables.propagate(e);
-    }
-  }
+  private SparkProgramWrapper(String[] args) throws Exception {
+    String[] arguments = validateArgs(args);
 
-  public static void main(String[] args) {
-    new SparkProgramWrapper(args).runUserProgram();
+    // Load the user class from the ProgramClassLoader
+    Class<? extends SparkProgram> sparkProgramClass = loadUserSparkClass(arguments[0]);
+    SparkContext sparkContext = getSparkContext(sparkProgramClass);
+    sparkProgramClass.newInstance().run(sparkContext);
   }
 
   /**
@@ -100,139 +94,61 @@ public class SparkProgramWrapper {
     return arguments;
   }
 
-  /**
-   * Instantiate an object of user's program class and call {@link #runUserProgram(SparkProgram)} to run it
-   *
-   * @throws RuntimeException if failed to instantiate an object of user's program class
-   */
-  private void runUserProgram() {
-    sparkContext = createSparkContext();
+  private SparkContext getSparkContext(Class<? extends SparkProgram> sparkProgramClass) {
+    SparkClassLoader classLoader = SparkClassLoader.findFromContext();
+    BasicSparkContext sparkContext = classLoader.getContext();
 
-    try {
-      runUserProgram(userProgramClass.newInstance());
-    } catch (InstantiationException ie) {
-      LOG.warn("Unable to instantiate an object of program class: {}", arguments[0], ie);
-      throw Throwables.propagate(ie);
-    } catch (IllegalAccessException iae) {
-      LOG.warn("Illegal access to class: {}", arguments[0] + "or to its constructor", iae);
-      throw Throwables.propagate(iae);
-    } finally {
-      stopSparkProgram();
-    }
-  }
+    SparkConf sparkConf = new SparkConf();
+    sparkConf.setAppName(sparkContext.getProgramId().getId());
+//    sparkConf.set(SPARK_METRICS_CONF_KEY, basicSparkContext.getMetricsPropertyFile().getAbsolutePath());
 
-  /**
-   * Sets the {@link SparkContext} to {@link JavaSparkContext} or to {@link ScalaSparkContext} depending on whether
-   * the user class implements {@link JavaSparkProgram} or {@link ScalaSparkProgram}
-   */
-  private SparkContext createSparkContext() {
-    if (JavaSparkProgram.class.isAssignableFrom(userProgramClass)) {
-      return new JavaSparkContext(basicSparkContext);
-    } else if (ScalaSparkProgram.class.isAssignableFrom(userProgramClass)) {
-      scalaProgram = true;
-      return new ScalaSparkContext(basicSparkContext);
+    if (JavaSparkProgram.class.isAssignableFrom(sparkProgramClass)) {
+      sparkContext.setSparkFrameworkContext(new JavaSparkFrameworkContext(sparkConf));
+    } else if (ScalaSparkProgram.class.isAssignableFrom(sparkProgramClass)) {
+      sparkContext.setSparkFrameworkContext(new ScalaSparkFrameworkContext(sparkConf));
     } else {
       String error = "Spark program must implement either JavaSparkProgram or ScalaSparkProgram";
       throw new IllegalArgumentException(error);
     }
+
+    return sparkContext;
   }
 
-  /**
-   * Extracts arguments which belongs to user's program and then invokes the run method on the user's program object
-   * with the arguments and the appropriate implementation {@link SparkContext}
-   *
-   * @param sparkProgram the user program's object
-   * @throws RuntimeException if failed to invokeUserProgram main function on the user's program object
-   */
-  private void runUserProgram(SparkProgram sparkProgram) {
-    try {
-      sparkProgram.run(sparkContext);
-    } catch (Throwable t) {
-      LOG.warn("Program class run method threw an exception", t);
-      throw Throwables.propagate(t);
-    }
-  }
-
+  @SuppressWarnings("unchecked")
   private Class<? extends SparkProgram> loadUserSparkClass(String className) throws ClassNotFoundException {
-    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-    Class<?> cls = classLoader.loadClass(className);
-    if (!SparkProgram.class.isAssignableFrom(cls)) {
-      throw new IllegalArgumentException("User class " + arguments[0] +
-                                           " does not implements " + SparkProgram.class.getName());
-    }
+    SparkClassLoader classLoader = SparkClassLoader.findFromContext();
+    Class<?> cls = classLoader.getProgramClassLoader().loadClass(className);
+    Preconditions.checkArgument(SparkProgram.class.isAssignableFrom(cls),
+                                "User class {} does not implements {}", className, SparkProgram.class);
+
     return (Class<? extends SparkProgram>) cls;
   }
 
-  /**
-   * Stops the Spark program by calling {@link org.apache.spark.SparkContext#stop()}
-   */
-  public static void stopSparkProgram() {
-    if (sparkContext != null) {
-      try {
-        if (isScalaProgram()) {
-          ((org.apache.spark.SparkContext) sparkContext.getOriginalSparkContext()).stop();
-        } else {
-          ((org.apache.spark.api.java.JavaSparkContext) sparkContext.getOriginalSparkContext()).stop();
-        }
-      } finally {
-        // Need to reset the spark context so that the program ClassLoader can be freed.
-        // It is needed because sparkContext is a static field.
-        // Same applies to basicSparkContext
-        sparkContext = null;
-        basicSparkContext = null;
-      }
-    }
-  }
+//  /**
+//   * Stops the Spark program by calling {@link org.apache.spark.SparkContext#stop()}
+//   */
+//  public static void stopSparkProgram() {
+//    if (sparkContext != null) {
+//      try {
+//        if (isScalaProgram()) {
+//          ((org.apache.spark.SparkContext) sparkContext.getOriginalSparkContext()).stop();
+//        } else {
+//          ((org.apache.spark.api.java.JavaSparkContext) sparkContext.getOriginalSparkContext()).stop();
+//        }
+//      } finally {
+//        // Need to reset the spark context so that the program ClassLoader can be freed.
+//        // It is needed because sparkContext is a static field.
+//        // Same applies to basicSparkContext
+//        sparkContext = null;
+//        basicSparkContext = null;
+//      }
+//    }
+//  }
 
-  /**
-   * @return spark program running status which is true if it is still running else false
-   */
-  public static boolean isSparkProgramRunning() {
-    return sparkProgramRunning;
-  }
-
-  /**
-   * @param sparkProgramRunning a boolean to which the sparkProgramRunning status will be set to
-   */
-  public static void setSparkProgramRunning(boolean sparkProgramRunning) {
-    SparkProgramWrapper.sparkProgramRunning = sparkProgramRunning;
-  }
-
-  /**
-   * @return spark program success status which is true if the program succeeded else false
-   */
-  public static boolean isSparkProgramSuccessful() {
-    return sparkProgramSuccessful;
-  }
-
-  /**
-   * @param sparkProgramSuccessful a boolean to which the programSuccess status will be set to
-   */
-  public static void setSparkProgramSuccessful(boolean sparkProgramSuccessful) {
-    SparkProgramWrapper.sparkProgramSuccessful = sparkProgramSuccessful;
-  }
-
-  /**
-   * @return true if user's program is in Scala or false (in case if it is in java)
-   */
-  private static boolean isScalaProgram() {
-    return scalaProgram;
-  }
-
-  /**
-   * Used to set the same {@link BasicSparkContext} which is inside {@link SparkRuntimeService} for accessing resources
-   * like Service Discovery, Metrics collection etc.
-   *
-   * @param basicSparkContext the {@link BasicSparkContext} to set from
-   */
-  public static void setBasicSparkContext(BasicSparkContext basicSparkContext) {
-    SparkProgramWrapper.basicSparkContext = basicSparkContext;
-  }
-
-  /**
-   * @return The {@link BasicSparkContext} which will be used to run the user's {@link Spark} program
-   */
-  public static BasicSparkContext getBasicSparkContext() {
-    return basicSparkContext;
-  }
+//  /**
+//   * @param sparkProgramSuccessful a boolean to which the programSuccess status will be set to
+//   */
+//  public static void setSparkProgramSuccessful(boolean sparkProgramSuccessful) {
+//    SparkProgramWrapper.sparkProgramSuccessful = sparkProgramSuccessful;
+//  }
 }

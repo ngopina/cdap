@@ -27,8 +27,8 @@ class SparkProgramListener extends SparkListener {
   override def onJobEnd(jobEnd: SparkListenerJobEnd) {
 
     jobEnd.jobResult match {
-      case JobSucceeded => SparkProgramWrapper.setSparkProgramSuccessful(true)
-      case _ => SparkProgramWrapper.setSparkProgramSuccessful(false)
+//      case JobSucceeded => SparkProgramWrapper.setSparkProgramSuccessful(true)
+      case _ => // no-op
     }
   }
 }

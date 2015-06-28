@@ -88,17 +88,18 @@ public abstract class AbstractSparkContextBuilder {
 
     // Creating Spark job context
     SparkSpecification sparkSpec = program.getApplicationSpecification().getSpark().get(program.getName());
-    BasicSparkContext context =
-      new BasicSparkContext(program, RunIds.fromString(runId), runtimeArguments, appSpec.getDatasets().keySet(),
-                            sparkSpec, logicalStartTime, workflowBatch, metricsCollectionService,
-                            datasetFramework, discoveryServiceClient, streamAdmin);
-
-    // propagating tx to all txAware guys
-    // The tx is committed or aborted depending upon the job success by the ProgramRunner and DatasetRecordWriter
-    for (TransactionAware txAware : context.getDatasetInstantiator().getTransactionAware()) {
-      txAware.startTx(tx);
-    }
-    return context;
+    return null;
+//    BasicSparkContext context =
+//      new BasicSparkContext(program, RunIds.fromString(runId), runtimeArguments, appSpec.getDatasets().keySet(),
+//                            sparkSpec, logicalStartTime, workflowBatch, metricsCollectionService,
+//                            datasetFramework, discoveryServiceClient, streamAdmin);
+//
+//    // propagating tx to all txAware guys
+//    // The tx is committed or aborted depending upon the job success by the ProgramRunner and DatasetRecordWriter
+//    for (TransactionAware txAware : context.getDatasetInstantiator().getTransactionAware()) {
+//      txAware.startTx(tx);
+//    }
+//    return context;
   }
 
   /**

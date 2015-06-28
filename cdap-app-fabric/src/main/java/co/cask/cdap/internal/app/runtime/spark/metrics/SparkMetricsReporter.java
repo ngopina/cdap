@@ -70,8 +70,9 @@ class SparkMetricsReporter extends ScheduledReporter {
         if (metricNameParts.length == 2) {
           metricName = metricNameParts[1];
         }
-        SparkProgramWrapper.getBasicSparkContext().getProgramMetrics().gauge(
-          metricName, ((Number) entry.getValue().getValue()).longValue());
+        // TODO
+//        SparkProgramWrapper.getBasicSparkContext().getProgramMetrics().gauge(
+//          metricName, ((Number) entry.getValue().getValue()).longValue());
       }
     }
   }

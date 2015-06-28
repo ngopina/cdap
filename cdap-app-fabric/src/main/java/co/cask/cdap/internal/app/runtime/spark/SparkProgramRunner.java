@@ -29,7 +29,6 @@ import co.cask.cdap.app.store.Store;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.conf.CConfiguration;
 import co.cask.cdap.common.lang.InstantiatorFactory;
-import co.cask.cdap.common.logging.LoggingContextAccessor;
 import co.cask.cdap.data2.dataset2.DatasetFramework;
 import co.cask.cdap.data2.transaction.stream.StreamAdmin;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
@@ -37,6 +36,7 @@ import co.cask.cdap.proto.ProgramType;
 import co.cask.tephra.TransactionSystemClient;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.Inject;
@@ -45,7 +45,6 @@ import org.apache.twill.api.RunId;
 import org.apache.twill.common.ServiceListenerAdapter;
 import org.apache.twill.common.Threads;
 import org.apache.twill.discovery.DiscoveryServiceClient;
-import org.apache.twill.filesystem.LocationFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +62,6 @@ public class SparkProgramRunner implements ProgramRunner {
   private final CConfiguration cConf;
   private final MetricsCollectionService metricsCollectionService;
   private final TransactionSystemClient txSystemClient;
-  private final LocationFactory locationFactory;
   private final DiscoveryServiceClient discoveryServiceClient;
   private final StreamAdmin streamAdmin;
   private final Store store;
@@ -71,13 +69,12 @@ public class SparkProgramRunner implements ProgramRunner {
   @Inject
   public SparkProgramRunner(DatasetFramework datasetFramework, CConfiguration cConf,
                             MetricsCollectionService metricsCollectionService, Configuration hConf,
-                            TransactionSystemClient txSystemClient, LocationFactory locationFactory,
-                            DiscoveryServiceClient discoveryServiceClient, StreamAdmin streamAdmin, Store store) {
+                            TransactionSystemClient txSystemClient, DiscoveryServiceClient discoveryServiceClient,
+                            StreamAdmin streamAdmin, Store store) {
     this.hConf = hConf;
     this.datasetFramework = datasetFramework;
     this.cConf = cConf;
     this.metricsCollectionService = metricsCollectionService;
-    this.locationFactory = locationFactory;
     this.txSystemClient = txSystemClient;
     this.discoveryServiceClient = discoveryServiceClient;
     this.streamAdmin = streamAdmin;
@@ -114,17 +111,17 @@ public class SparkProgramRunner implements ProgramRunner {
       throw Throwables.propagate(e);
     }
 
-    final BasicSparkContext context = new BasicSparkContext(program, runId, options.getUserArguments(),
-                                                            appSpec.getDatasets().keySet(), spec,
-                                                            logicalStartTime, workflowBatch,
-                                                            metricsCollectionService, datasetFramework,
-                                                            discoveryServiceClient, streamAdmin);
+    // TODO
+    final BasicSparkContext context = new BasicSparkContext(hConf, spec, program.getId(),
+                                                            runId, program.getClassLoader(),
+                                                            logicalStartTime, options.getUserArguments().asMap(),
+                                                            datasetFramework, streamAdmin,
+                                                metricsCollectionService.getContext(ImmutableMap.<String, String>of()));
 
-    LoggingContextAccessor.setLoggingContext(context.getLoggingContext());
+//    LoggingContextAccessor.setLoggingContext(context.getLoggingContext());
 
     Service sparkRuntimeService = new SparkRuntimeService(cConf, hConf, spark, spec, context,
-                                                          program.getJarLocation(), locationFactory,
-                                                          txSystemClient);
+                                                          program.getJarLocation(), txSystemClient);
 
     sparkRuntimeService.addListener(createRuntimeServiceListener(program, runId, arguments),
                                     Threads.SAME_THREAD_EXECUTOR);
