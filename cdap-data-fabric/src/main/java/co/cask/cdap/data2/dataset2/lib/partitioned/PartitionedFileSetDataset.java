@@ -25,6 +25,10 @@ import co.cask.cdap.api.dataset.lib.AbstractDataset;
 import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.api.dataset.lib.FileSetArguments;
 import co.cask.cdap.api.dataset.lib.FileSetProperties;
+import co.cask.cdap.api.dataset.lib.IndexedTable;
+import co.cask.cdap.api.dataset.lib.Partition;
+import co.cask.cdap.api.dataset.lib.PartitionConsumerResult;
+import co.cask.cdap.api.dataset.lib.PartitionConsumerState;
 import co.cask.cdap.api.dataset.lib.PartitionDetail;
 import co.cask.cdap.api.dataset.lib.PartitionFilter;
 import co.cask.cdap.api.dataset.lib.PartitionKey;
@@ -37,12 +41,12 @@ import co.cask.cdap.api.dataset.lib.Partitioning.FieldType;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Scanner;
-import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.explore.client.ExploreFacade;
 import co.cask.cdap.proto.Id;
 import co.cask.tephra.Transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -53,10 +57,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import javax.annotation.Nullable;
 
@@ -74,7 +81,7 @@ public class PartitionedFileSetDataset extends AbstractDataset implements Partit
   protected static final byte[] CREATION_TIME = { 'c' };
 
   protected final FileSet files;
-  protected final Table partitionsTable;
+  protected final IndexedTable partitionsTable;
   protected final Map<String, String> runtimeArguments;
   protected final DatasetSpecification spec;
   protected final Provider<ExploreFacade> exploreFacadeProvider;
@@ -89,9 +96,10 @@ public class PartitionedFileSetDataset extends AbstractDataset implements Partit
   // by adding the partition in the onSuccess() of this dataset, map/reduce programs do not need to do that in
   // their onFinish() any longer. But existing map/reduce programs may still do that, and would now fail.
   private final Map<String, PartitionKey> partitionsAddedInSameTx = Maps.newHashMap();
+  private Transaction tx;
 
   public PartitionedFileSetDataset(DatasetContext datasetContext, String name,
-                                   Partitioning partitioning, FileSet fileSet, Table partitionTable,
+                                   Partitioning partitioning, FileSet fileSet, IndexedTable partitionTable,
                                    DatasetSpecification spec, Map<String, String> arguments,
                                    Provider<ExploreFacade> exploreFacadeProvider) {
     super(name, partitionTable);
@@ -108,6 +116,19 @@ public class PartitionedFileSetDataset extends AbstractDataset implements Partit
   public void startTx(Transaction tx) {
     partitionsAddedInSameTx.clear();
     super.startTx(tx);
+    this.tx = tx;
+  }
+
+  @Override
+  public boolean commitTx() throws Exception {
+    this.tx = null;
+    return super.commitTx();
+  }
+
+  @Override
+  public boolean rollbackTx() throws Exception {
+    this.tx = null;
+    return super.rollbackTx();
   }
 
   @Override
@@ -158,6 +179,8 @@ public class PartitionedFileSetDataset extends AbstractDataset implements Partit
     }
 
     addMetadataToPut(metadata, put);
+    // index each row by its transaction's read pointer
+    put.add(PartitionedFileSetDefinition.INDEX_COLUMN, tx.getWritePointer());
 
     partitionsTable.put(put);
     partitionsAddedInSameTx.put(path, key);
@@ -166,6 +189,112 @@ public class PartitionedFileSetDataset extends AbstractDataset implements Partit
     if (explorable) {
       addPartitionToExplore(key, path);
       // TODO: make DDL operations transactional [CDAP-1393]
+    }
+  }
+
+  @Override
+  public PartitionConsumerResult consumePartitions(PartitionConsumerState partitionConsumerState) {
+    long[] previousInProgress = partitionConsumerState.getVersionsToCheck();
+    long[] inProgress = tx.getInProgress();
+    List<Long> noLongerInProgress = getDiff(previousInProgress, inProgress);
+
+    List<PartitionIterator> partitionIterators = Lists.newArrayList();
+    for (long version : noLongerInProgress) {
+      // TODO: maybe scan the entire range of noLongerInProgress, instead of each being a lookup (for performance)
+      Scanner scanner = partitionsTable.readByIndex(PartitionedFileSetDefinition.INDEX_COLUMN,
+                                                    Bytes.toBytes(version));
+      partitionIterators.add(new PartitionIterator(scanner,
+                                                   null));
+//                                                   noLongerInProgress.toArray(new Long[noLongerInProgress.size()])));
+    }
+
+    Long startVersion = partitionConsumerState.getStartVersion();
+    Scanner scanner = partitionsTable.scanByIndex(PartitionedFileSetDefinition.INDEX_COLUMN,
+                                                  startVersion == null ? null : Bytes.toBytes(startVersion),
+                                                  null);
+    partitionIterators.add(new PartitionIterator(scanner, null));
+    // This (using the write pointer as the startVersion) can be problematic for consuming partitioned added within the
+    // same transaction.
+    // For instance, if we add a partition and then consume partitions, then the next partition consumption will also
+    // include the same partition. We can work around this problem by using tx.getWritePointer + 1 as the beginning of
+    // the next scan, but this causes a similar problem in the case that we consume partitions first, and then add the
+    // partition (it might be excluded).
+    return new PartitionConsumerResult(new PartitionConsumerState(tx.getWritePointer(), inProgress),
+                                       Iterators.concat(partitionIterators.iterator()));
+  }
+
+  // Assumptions made: both input arrays are sorted & have unique values
+  // returns the list of longs that are contained within oldLongs, but not newLongs (oldLongs - newLongs)
+  public static List<Long> getDiff(long[] oldLongs, long[] newLongs) {
+    List<Long> diff = Lists.newArrayList();
+
+    int newIdx = 0;
+    // for every long in oldLongs, add it to the diff unless it is found in newLongs
+    for (long oldLong : oldLongs) {
+      // TODO: could break out once newIdx >= newLongs.length for efficiency
+      while (newIdx < newLongs.length && newLongs[newIdx] < oldLong) {
+        newIdx++;
+      }
+      // if it exists in newLongs, continue;
+      if (newIdx < newLongs.length && newLongs[newIdx] == oldLong) {
+        newIdx++;
+        continue;
+      }
+      diff.add(oldLong);
+    }
+    return diff;
+  }
+
+  private final class PartitionIterator implements Iterator<Partition> {
+    private final Long[] versionsToCheck;
+    private final Scanner scanner;
+    private Partition partition;
+
+    public PartitionIterator(Scanner scanner, @Nullable Long[] versionsToCheck) {
+      this.scanner = scanner;
+      this.versionsToCheck = versionsToCheck;
+      this.partition = getNextPartition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return partition != null;
+    }
+
+    @Override
+    public Partition next() {
+      if (partition == null) {
+        throw new NoSuchElementException();
+      }
+      Partition partitionToReturn = partition;
+      partition = getNextPartition();
+      return partitionToReturn;
+    }
+
+    private Partition getNextPartition() {
+      Row row = scanner.next();
+      if (versionsToCheck != null) {
+        // we exclude all the values that are not within the specified set of values (versionsToCheck)
+        while (row != null &&
+          0 > Arrays.binarySearch(versionsToCheck, Bytes.toLong(row.get(PartitionedFileSetDefinition.INDEX_COLUMN)))) {
+          row = scanner.next();
+        }
+      }
+      return rowToPartition(row);
+    }
+
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+    }
+
+    private Partition rowToPartition(@Nullable Row row) {
+      if (row == null) {
+        return null;
+      }
+      PartitionKey key = parseRowKey(row.getRow(), partitioning);
+      String relativePath = Bytes.toString(row.get(RELATIVE_PATH));
+      return new BasicPartitionDetail(PartitionedFileSetDataset.this, relativePath, key, metadataFromRow(row));
     }
   }
 
