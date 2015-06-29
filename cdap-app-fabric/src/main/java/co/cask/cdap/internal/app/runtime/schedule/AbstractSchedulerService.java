@@ -145,42 +145,16 @@ public abstract class AbstractSchedulerService extends AbstractIdleService imple
   }
 
   @Override
-  public void schedule(Id.Program programId, SchedulableProgramType programType, Schedule schedule)
+  public void schedule(Id.Program programId, ScheduleSpecification scheduleSpec)
     throws SchedulerException {
-    schedule(programId, programType, schedule, ImmutableMap.<String, String>of());
+    schedule(programId, scheduleSpec, ImmutableMap.<String, String>of());
   }
 
   @Override
-  public void schedule(Id.Program programId, SchedulableProgramType programType, Schedule schedule,
+  public void schedule(Id.Program programId, ScheduleSpecification scheduleSpec,
                        Map<String, String> properties) throws SchedulerException {
-    Scheduler scheduler;
-    if (schedule instanceof TimeSchedule) {
-      scheduler = timeScheduler;
-    } else if (schedule instanceof StreamSizeSchedule) {
-      scheduler = streamSizeScheduler;
-    } else {
-      throw new IllegalArgumentException("Unhandled type of schedule: " + schedule.getClass());
-    }
-
-    scheduler.schedule(programId, programType, schedule, properties);
-    if (isLazyStart()) {
-      // TODO: CDAP-2281 figure out a better way to handle schedules in unit tests
-      String ignoreLazy = properties.get(Constants.Scheduler.IGNORE_LAZY_START);
-      boolean shouldNotSuspend = ignoreLazy != null && Boolean.valueOf(ignoreLazy);
-      if (shouldNotSuspend) {
-        // normally in lazy mode, the scheduler is started on calls to resume.
-        // If this schedule should be active right now instead of requiring a call to resume,
-        // we need to start the scheduler here.
-        lazyStart(scheduler);
-      } else {
-        try {
-          scheduler.suspendSchedule(programId, programType, schedule.getName());
-        } catch (NotFoundException e) {
-          // Should not happen - we just created it. Could have been deleted just in between
-          LOG.info("Schedule could not be suspended - it did not exist: {}", schedule.getName());
-        }
-      }
-    }
+    schedule(programId, scheduleSpec.getProgram().getProgramType(), ImmutableList.of(scheduleSpec.getSchedule()),
+             properties);
   }
 
   @Override
@@ -193,7 +167,34 @@ public abstract class AbstractSchedulerService extends AbstractIdleService imple
   public void schedule(Id.Program programId, SchedulableProgramType programType, Iterable<Schedule> schedules,
                        Map<String, String> properties) throws SchedulerException {
     for (Schedule schedule : schedules) {
-      schedule(programId, programType, schedule, properties);
+      Scheduler scheduler;
+      if (schedule instanceof TimeSchedule) {
+        scheduler = timeScheduler;
+      } else if (schedule instanceof StreamSizeSchedule) {
+        scheduler = streamSizeScheduler;
+      } else {
+        throw new IllegalArgumentException("Unhandled type of schedule: " + schedule.getClass());
+      }
+
+      scheduler.schedule(programId, programType, ImmutableList.of(schedule), properties);
+      if (isLazyStart()) {
+        // TODO: CDAP-2281 figure out a better way to handle schedules in unit tests
+        String ignoreLazy = properties.get(Constants.Scheduler.IGNORE_LAZY_START);
+        boolean shouldNotSuspend = ignoreLazy != null && Boolean.valueOf(ignoreLazy);
+        if (shouldNotSuspend) {
+          // normally in lazy mode, the scheduler is started on calls to resume.
+          // If this schedule should be active right now instead of requiring a call to resume,
+          // we need to start the scheduler here.
+          lazyStart(scheduler);
+        } else {
+          try {
+            scheduler.suspendSchedule(programId, programType, schedule.getName());
+          } catch (NotFoundException e) {
+            // Should not happen - we just created it. Could have been deleted just in between
+            LOG.info("Schedule could not be suspended - it did not exist: {}", schedule.getName());
+          }
+        }
+      }
     }
   }
 
@@ -236,16 +237,16 @@ public abstract class AbstractSchedulerService extends AbstractIdleService imple
   }
 
   @Override
-  public void updateSchedule(Id.Program program, SchedulableProgramType programType, Schedule schedule)
+  public void updateSchedule(Id.Program program, ScheduleSpecification scheduleSpec)
     throws NotFoundException, SchedulerException {
-    updateSchedule(program, programType, schedule, ImmutableMap.<String, String>of());
+    updateSchedule(program, scheduleSpec, ImmutableMap.<String, String>of());
   }
 
   @Override
-  public void updateSchedule(Id.Program program, SchedulableProgramType programType, Schedule schedule,
+  public void updateSchedule(Id.Program program, ScheduleSpecification scheduleSpec,
                              Map<String, String> properties) throws NotFoundException, SchedulerException {
-    Scheduler scheduler = getSchedulerForSchedule(program, schedule.getName());
-    scheduler.updateSchedule(program, programType, schedule, properties);
+    Scheduler scheduler = getSchedulerForSchedule(program, scheduleSpec.getSchedule().getName());
+    scheduler.updateSchedule(program, scheduleSpec, properties);
   }
 
   @Override

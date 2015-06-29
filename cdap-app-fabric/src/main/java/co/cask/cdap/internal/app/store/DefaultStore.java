@@ -28,6 +28,7 @@ import co.cask.cdap.api.flow.FlowletDefinition;
 import co.cask.cdap.api.schedule.ScheduleSpecification;
 import co.cask.cdap.api.service.ServiceSpecification;
 import co.cask.cdap.api.worker.WorkerSpecification;
+import co.cask.cdap.api.workflow.ScheduleProgramInfo;
 import co.cask.cdap.app.ApplicationSpecification;
 import co.cask.cdap.app.program.Program;
 import co.cask.cdap.app.program.Programs;
@@ -690,7 +691,7 @@ public class DefaultStore implements Store {
         Map<String, ScheduleSpecification> schedules = Maps.newHashMap(appSpec.getSchedules());
         ScheduleSpecification removed = schedules.remove(scheduleName);
         if (removed == null) {
-          throw new NoSuchElementException("no such schedule @ account id: " + program.getNamespaceId() +
+          throw new NoSuchElementException("no such schedule @ namespace id: " + program.getNamespaceId() +
                                              ", app id: " + program.getApplication() +
                                              ", program id: " + program.getId() +
                                              ", schedule name: " + scheduleName);
@@ -702,6 +703,57 @@ public class DefaultStore implements Store {
         return null;
       }
     });
+  }
+
+  @Override
+  public void deleteSchedules(final Id.Program program) {
+    txnl.executeUnchecked(new TransactionExecutor.Function<AppMds, Void>() {
+      @Override
+      public Void apply(AppMds mds) throws Exception {
+        ApplicationSpecification existingAppSpec = getAppSpecOrFail(mds, program);
+        ApplicationSpecification newAppSpec =
+          removeSchedulesFromApp(existingAppSpec, new Predicate<ScheduleProgramInfo>() {
+            @Override
+            public boolean apply(@Nullable ScheduleProgramInfo scheduleProgramInfo) {
+              return scheduleProgramInfo != null && scheduleProgramInfo.getProgramName().equals(program.getId()) &&
+                scheduleProgramInfo.getProgramType().equals(program.getType().getSchedulableType());
+            }
+          });
+        replaceAppSpecInProgramJar(program, newAppSpec);
+        mds.apps.updateAppSpec(program.getNamespaceId(), program.getApplicationId(), newAppSpec);
+        return null;
+      }
+    });
+  }
+
+  @Override
+  public void deleteSchedules(final Id.Namespace namespaceId) {
+    txnl.executeUnchecked(new TransactionExecutor.Function<AppMds, Void>() {
+      @Override
+      public Void apply(AppMds input) throws Exception {
+        for (ApplicationSpecification appSpec : getAllApplications(namespaceId)) {
+          removeSchedulesFromApp(appSpec, new Predicate<ScheduleProgramInfo>() {
+            @Override
+            public boolean apply(@Nullable ScheduleProgramInfo input) {
+              return true;
+            }
+          });
+        }
+        return null;
+      }
+    });
+  }
+
+  private ApplicationSpecification removeSchedulesFromApp(ApplicationSpecification appSpec,
+                                                          Predicate<ScheduleProgramInfo> predicate) {
+    Map<String, ScheduleSpecification> schedules = Maps.newHashMap(appSpec.getSchedules());
+    for (Map.Entry<String, ScheduleSpecification> entry : schedules.entrySet()) {
+      ScheduleProgramInfo scheduleProgramInfo = entry.getValue().getProgram();
+      if (predicate.apply(scheduleProgramInfo)) {
+        schedules.remove(entry.getKey());
+      }
+    }
+    return new AppSpecificationWithChangedSchedules(appSpec, schedules);
   }
 
   private static class AppSpecificationWithChangedSchedules extends ForwardingApplicationSpecification {

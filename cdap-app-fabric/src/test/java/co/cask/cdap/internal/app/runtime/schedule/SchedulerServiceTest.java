@@ -123,7 +123,7 @@ public class SchedulerServiceTest {
     schedulerService.resumeSchedule(program, programType, "Schedule1");
     checkState(Scheduler.ScheduleState.SCHEDULED, scheduleIds);
 
-    schedulerService.schedule(program, programType, timeSchedule2);
+    schedulerService.schedule(program, programType, ImmutableList.of(timeSchedule2));
     applicationSpecification = createNewSpecification(applicationSpecification, program, programType, timeSchedule2);
     store.addApplication(appId, applicationSpecification, locationFactory.create("app"));
     scheduleIds = schedulerService.getScheduleIds(program, programType);

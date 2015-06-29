@@ -118,15 +118,17 @@ final class TimeScheduler implements Scheduler {
   }
 
   @Override
-  public void schedule(Id.Program program, SchedulableProgramType programType, Schedule schedule)
+  public void schedule(Id.Program program, ScheduleSpecification scheduleSpec)
     throws SchedulerException {
-    schedule(program, programType, schedule, ImmutableMap.<String, String>of());
+    schedule(program, scheduleSpec, ImmutableMap.<String, String>of());
   }
 
   @Override
-  public void schedule(Id.Program program, SchedulableProgramType programType, Schedule schedule,
+  public void schedule(Id.Program program, ScheduleSpecification scheduleSpec,
                        Map<String, String> properties) throws SchedulerException {
-    schedule(program, programType, ImmutableList.of(schedule), properties);
+    schedule(program, scheduleSpec.getProgram().getProgramType(), ImmutableList.of(scheduleSpec.getSchedule()),
+             properties);
+    store.addSchedule(program, scheduleSpec);
   }
 
   @Override
@@ -260,17 +262,17 @@ final class TimeScheduler implements Scheduler {
   }
 
   @Override
-  public void updateSchedule(Id.Program program, SchedulableProgramType programType, Schedule schedule)
+  public void updateSchedule(Id.Program program, ScheduleSpecification scheduleSpec)
     throws NotFoundException, SchedulerException {
-    updateSchedule(program, programType, schedule, ImmutableMap.<String, String>of());
+    updateSchedule(program, scheduleSpec, ImmutableMap.<String, String>of());
   }
 
   @Override
-  public void updateSchedule(Id.Program program, SchedulableProgramType programType, Schedule schedule,
+  public void updateSchedule(Id.Program program, ScheduleSpecification scheduleSpec,
                              Map<String, String> properties) throws NotFoundException, SchedulerException {
     // TODO modify the update flow [CDAP-1618]
-    deleteSchedule(program, programType, schedule.getName());
-    schedule(program, programType, schedule, properties);
+    deleteSchedule(program, scheduleSpec.getProgram().getProgramType(), scheduleSpec.getSchedule().getName());
+    schedule(program, scheduleSpec, properties);
   }
 
   @Override
@@ -290,26 +292,33 @@ final class TimeScheduler implements Scheduler {
       if (scheduler.getTriggersOfJob(jobKey).isEmpty()) {
         scheduler.deleteJob(jobKey);
       }
+      store.deleteSchedule(program, scheduleName);
     } catch (org.quartz.SchedulerException e) {
       throw new SchedulerException(e);
     }
   }
 
   @Override
-  public void deleteSchedules(Id.Program program, SchedulableProgramType programType)
-    throws SchedulerException {
-    checkInitialized();
-    try {
-      scheduler.deleteJob(jobKeyFor(program, programType));
-    } catch (org.quartz.SchedulerException e) {
-      throw new SchedulerException(e);
-    }
+  public void deleteSchedules(Id.Program program, SchedulableProgramType programType) throws SchedulerException {
+    deleteSchedulerJob(program, programType);
+    store.deleteSchedules(Id.Program.from(program.getApplication(), ProgramType.valueOfSchedulableType(programType),
+                                          program.getId()));
   }
 
   @Override
   public void deleteAllSchedules(Id.Namespace namespaceId) throws SchedulerException {
     for (ApplicationSpecification appSpec : store.getAllApplications(namespaceId)) {
       deleteAllSchedules(namespaceId, appSpec);
+    }
+    store.deleteSchedules(namespaceId);
+  }
+
+  private void deleteSchedulerJob(Id.Program program, SchedulableProgramType programType) throws SchedulerException {
+    checkInitialized();
+    try {
+      scheduler.deleteJob(jobKeyFor(program, programType));
+    } catch (org.quartz.SchedulerException e) {
+      throw new SchedulerException(e);
     }
   }
 
@@ -319,7 +328,7 @@ final class TimeScheduler implements Scheduler {
       Id.Application appId = Id.Application.from(namespaceId.getId(), appSpec.getName());
       ProgramType programType = ProgramType.valueOfSchedulableType(scheduleSpec.getProgram().getProgramType());
       Id.Program programId = Id.Program.from(appId, programType, scheduleSpec.getProgram().getProgramName());
-      deleteSchedules(programId, scheduleSpec.getProgram().getProgramType());
+      deleteSchedulerJob(programId, scheduleSpec.getProgram().getProgramType());
     }
   }
 
